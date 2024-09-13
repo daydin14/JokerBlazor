@@ -1,0 +1,33 @@
+﻿.jokes-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+    text-align: center;
+}
+
+.jokes-paper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    width: 850px;
+}
+
+.jokes-flags {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+}
+
+.jokes-api-url {
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+}
+
+.loading-indicator {
+    /* TODO: Add KeyFrame spinning animation */
+}
