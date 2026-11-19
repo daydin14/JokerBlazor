@@ -16,35 +16,27 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: 8.0.x
+          dotnet-version: 10.0.x
 
       - name: Cache NuGet packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ~/.nuget/packages
           key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
           restore-keys: |
             ${{ runner.os }}-nuget-
 
-      - name: Restore dependencies
-        run: dotnet restore
-        working-directory: ./JokerBlazor/
+      - name: Restore
+        run: dotnet restore JokerBlazor/JokerBlazor.sln
 
       - name: Build
-        run: dotnet build --no-restore
-        working-directory: ./JokerBlazor/
+        run: dotnet build JokerBlazor/JokerBlazor.sln --configuration Release --no-restore
 
       - name: Test
-        run: dotnet test --no-build --verbosity normal
-        working-directory: ./JokerBlazor/
+        run: dotnet test JokerBlazor/JokerBlazor.sln --configuration Release --no-build --verbosity normal
 
       - name: Publish
-        run: dotnet publish -c Release -o build
-        working-directory: ./JokerBlazor/
+        run: dotnet publish JokerBlazor/JokerBlazor/JokerBlazor.csproj --configuration Release --output "$RUNNER_TEMP/joker-publish"
 
-      - name: Deploy to GitHub Pages
-        uses: peaceiris/actions-gh-pages@v3
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./JokerBlazor/build/wwwroot
-          publish_branch: gh-pages
+      - name: Check GitHub Pages output
+        run: python3 scripts/prepare-github-pages.py "$RUNNER_TEMP/joker-publish/wwwroot"
