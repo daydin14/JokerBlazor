@@ -129,6 +129,7 @@ code {
 .feature-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
+    align-items: stretch;
     gap: 0.9rem;
     margin-top: 1.75rem;
 }
@@ -143,10 +144,16 @@ code {
     display: flex;
     flex-direction: column;
     gap: 0.4rem;
+    height: 100%;
     min-height: 100%;
+    margin: 0;
 }
 
-.panel + .panel,
+.feature-grid > .panel {
+    margin-top: 0;
+}
+
+.stack > .panel + .panel,
 .joke-panel {
     margin-top: 1rem;
 }
@@ -266,8 +273,104 @@ code {
     margin-top: 0.25rem;
 }
 
+.favorite-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    align-items: flex-start;
+    width: 100%;
+}
+
+.top-joke {
+    margin-top: 0.65rem;
+}
+
+.filter-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+    margin-bottom: 0.35rem;
+}
+
+.icon-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.15rem;
+    margin-top: 0.35rem;
+}
+
+.quiz-box {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: flex-end;
+    margin-top: 1rem;
+}
+
+.quiz-box .mud-input-control {
+    flex: 1 1 16rem;
+}
+
+.help-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1400;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+    background: rgba(16, 16, 24, 0.46);
+}
+
+.help-card {
+    width: min(26rem, 100%);
+}
+
+.help-card kbd {
+    border: 1px solid var(--mud-palette-lines-default);
+    border-radius: 6px;
+    padding: 0.05rem 0.4rem;
+    font-family: inherit;
+}
+
+.joke-enter {
+    animation: joke-fade-in 0.45s ease;
+}
+
+.punchline-reveal {
+    animation: punchline-up 0.4s ease;
+}
+
+.favorite-pop {
+    animation: favorite-pop 0.35s ease;
+}
+
+@keyframes joke-fade-in {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes punchline-up {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: none; }
+}
+
+@keyframes favorite-pop {
+    0% { transform: scale(1); }
+    45% { transform: scale(1.28); }
+    100% { transform: scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .joke-enter,
+    .punchline-reveal,
+    .favorite-pop {
+        animation: none;
+    }
+}
+
 @media (max-width: 800px) {
-    .feature-grid {
+    .feature-grid,
+    .filter-row {
         grid-template-columns: 1fr;
     }
 

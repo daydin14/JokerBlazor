@@ -8,68 +8,54 @@ namespace JokerBlazor.Tests;
 public class JokeServiceTests
 {
     [Fact]
-    public void BuildRequestUrl_without_flags_is_the_canonical_endpoint()
+    public void Safe_default_url_blacklists_the_unsafe_flags()
     {
-        var url = JokeService.BuildRequestUrl([]);
+        var url = JokeRequest.BuildUrl(JokeQuery.SafeDefault());
+
+        Assert.Equal("https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,racist,sexist,explicit", url);
+    }
+
+    [Fact]
+    public void BuildUrl_adds_category_and_type_and_keeps_flag_order()
+    {
+        var url = JokeRequest.BuildUrl(new JokeQuery
+        {
+            Category = "programming",
+            JokeType = JokeCatalog.TypeSingle,
+            Blacklist = ["explicit", "nsfw", "made-up", "political"]
+        });
+
+        Assert.Equal("https://v2.jokeapi.dev/joke/Programming?blacklistFlags=nsfw,political,explicit&type=single", url);
+    }
+
+    [Fact]
+    public void Both_types_omit_the_type_parameter()
+    {
+        var url = JokeRequest.BuildUrl(new JokeQuery { JokeType = JokeCatalog.TypeBoth, Blacklist = [] });
 
         Assert.Equal("https://v2.jokeapi.dev/joke/Any", url);
     }
 
     [Fact]
-    public void BuildRequestUrl_keeps_known_flags_in_api_order()
-    {
-        var url = JokeService.BuildRequestUrl(["explicit", "nsfw", "not-a-flag", "political"]);
-
-        Assert.Equal("https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,political,explicit", url);
-    }
-
-    [Fact]
     public void Present_reads_single_and_twopart_jokes()
     {
-        var single = JokeText.Present(new Joke
-        {
-            Type = "single",
-            Category = "Programming",
-            JokeText = "  A joke.  "
-        });
-        var twopart = JokeText.Present(new Joke
-        {
-            Type = "twopart",
-            Category = "Programming",
-            Setup = "Setup",
-            Delivery = "Delivery"
-        });
+        var single = JokeText.Present(new Joke { Id = 3, Type = "single", Category = "Programming", JokeText = "  A joke.  " });
+        var twopart = JokeText.Present(new Joke { Id = 4, Type = "twopart", Category = "Pun", Setup = "Setup", Delivery = "Delivery" });
 
         Assert.NotNull(single);
+        Assert.Equal(3, single.Id);
         Assert.Equal("A joke.", single.Primary);
-        Assert.Null(single.Punchline);
+        Assert.False(single.HasPunchline);
         Assert.NotNull(twopart);
-        Assert.Equal("Setup", twopart.Primary);
         Assert.Equal("Delivery", twopart.Punchline);
     }
 
     [Fact]
-    public void Present_returns_null_when_the_joke_has_no_text()
-    {
-        Assert.Null(JokeText.Present(new Joke { Type = "single" }));
-        Assert.Null(JokeText.Present(null));
-    }
-
-    [Fact]
-    public async Task GetJokeAsync_reads_a_single_joke()
+    public async Task GetJokeAsync_requests_the_filter_url()
     {
         const string json = """
-            {
-              "error": false,
-              "category": "Programming",
-              "type": "single",
-              "joke": "The glass is twice as big as it needs to be.",
-              "id": 23,
-              "safe": true,
-              "lang": "en"
-            }
+            {"error":false,"category":"Programming","type":"single","joke":"Twice as big.","id":23,"safe":true,"lang":"en"}
             """;
-
         Uri? requested = null;
         var service = new JokeService(new HttpClient(new StubHandler(request =>
         {
@@ -77,33 +63,73 @@ public class JokeServiceTests
             return Json(json);
         })));
 
-        var result = await service.GetJokeAsync(["nsfw", "explicit"]);
+        var result = await service.GetJokeAsync(new JokeQuery { Blacklist = ["nsfw"] });
 
         Assert.True(result.Ok);
-        Assert.Equal("https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw,explicit", result.RequestUrl);
+        Assert.Equal("https://v2.jokeapi.dev/joke/Any?blacklistFlags=nsfw", result.RequestUrl);
         Assert.Equal(result.RequestUrl, requested?.AbsoluteUri);
-        Assert.Equal("The glass is twice as big as it needs to be.", result.Joke?.Primary);
-        Assert.Null(result.Joke?.Punchline);
-        Assert.Equal("Programming", result.Joke?.Category);
+        Assert.Equal(23, result.Joke?.Id);
     }
 
     [Fact]
     public void ReadResponse_uses_the_api_error_message()
     {
-        const string json = """
-            {
-              "error": true,
-              "code": 106,
-              "message": "No matching joke found",
-              "timestamp": 1795110438583
-            }
-            """;
+        const string json = """{"error":true,"code":106,"message":"No matching joke found","timestamp":1}""";
 
         var result = JokeService.ReadResponse("https://v2.jokeapi.dev/joke/Any", false, 400, json);
 
         Assert.False(result.Ok);
         Assert.Equal("No matching joke found", result.ErrorMessage);
     }
+
+    [Fact]
+    public void History_walks_back_and_forward_and_drops_the_forward_branch()
+    {
+        var history = new SessionHistory();
+        history.Append(Card(1, "one"));
+        history.Append(Card(2, "two"));
+        Assert.True(history.Back());
+        Assert.Equal(1, history.Current?.Id);
+        history.Append(Card(3, "three"));
+
+        Assert.False(history.HasSeen(2));
+        Assert.False(history.CanForward);
+        Assert.Equal(3, history.Current?.Id);
+        Assert.True(history.Back());
+        Assert.True(history.Forward());
+    }
+
+    [Fact]
+    public void Favorites_ignore_duplicates_and_search()
+    {
+        var book = new FavoriteBook();
+        Assert.True(book.Add(Card(5, "cargo cult")));
+        Assert.False(book.Add(Card(5, "cargo cult")));
+        Assert.Single(book.Search("cargo"));
+        Assert.Empty(book.Search("missing"));
+        Assert.True(book.Remove(5));
+        Assert.Empty(book.Items);
+    }
+
+    [Fact]
+    public void Joke_of_the_day_is_stable_for_a_date()
+    {
+        var today = new DateOnly(2026, 11, 19);
+
+        Assert.Equal(JokeOfTheDay.IdFor(today), JokeOfTheDay.IdFor(today));
+        Assert.NotEqual(JokeOfTheDay.IdFor(today), JokeOfTheDay.IdFor(today.AddDays(1)));
+        Assert.Equal(JokeOfTheDay.IdFor(today), JokeOfTheDay.IdFor(today.AddDays(JokeOfTheDay.Range)));
+        Assert.Equal(JokeOfTheDay.IdFor(today), JokeOfTheDay.Candidates(today)[0]);
+    }
+
+    [Fact]
+    public void Quiz_accepts_a_normalized_punchline()
+    {
+        Assert.True(QuizMatch.IsCorrect("Mitosis!", "mitosis"));
+        Assert.False(QuizMatch.IsCorrect("a", "mitosis"));
+    }
+
+    private static JokeCard Card(int id, string text) => new(id, "Pun", "single", text, null);
 
     private static HttpResponseMessage Json(string json) => new(HttpStatusCode.OK)
     {

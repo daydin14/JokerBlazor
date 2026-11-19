@@ -6,42 +6,36 @@ namespace JokerBlazor.Services;
 
 public sealed class JokeService(HttpClient http)
 {
-    public const string Endpoint = "https://v2.jokeapi.dev/joke/Any";
-
-    public static readonly string[] BlacklistFlags = ["nsfw", "religious", "political", "racist", "sexist", "explicit"];
-
-    public static string BuildRequestUrl(IEnumerable<string>? selectedFlags)
+    public async Task<JokeFetchResult> GetJokeAsync(JokeQuery? query, CancellationToken cancellationToken = default)
     {
-        var selected = new HashSet<string>(selectedFlags ?? [], StringComparer.OrdinalIgnoreCase);
-        var flags = BlacklistFlags.Where(selected.Contains).ToArray();
-        if (flags.Length == 0)
-        {
-            return Endpoint;
-        }
-
-        return $"{Endpoint}?blacklistFlags={string.Join(",", flags)}";
+        var url = JokeRequest.BuildUrl(query);
+        return await SendAsync(url, cancellationToken);
     }
 
-    public async Task<JokeFetchResult> GetJokeAsync(IEnumerable<string>? selectedFlags, CancellationToken cancellationToken = default)
+    public async Task<JokeFetchResult> GetByIdAsync(int id, CancellationToken cancellationToken = default)
     {
-        var url = BuildRequestUrl(selectedFlags);
+        if (id <= 0)
+        {
+            return JokeFetchResult.Failure(JokeRequest.Host, "That joke id is not valid.");
+        }
 
-        try
+        return await SendAsync(JokeRequest.BuildByIdUrl(id), cancellationToken);
+    }
+
+    public async Task<JokeFetchResult> GetJokeOfTheDayAsync(DateOnly date, CancellationToken cancellationToken = default)
+    {
+        JokeFetchResult? last = null;
+        foreach (var id in JokeOfTheDay.Candidates(date))
         {
-            using var request = new HttpRequestMessage(HttpMethod.Get, url);
-            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
-            using var response = await http.SendAsync(request, cancellationToken);
-            var body = await response.Content.ReadAsStringAsync(cancellationToken);
-            return ReadResponse(url, response.IsSuccessStatusCode, (int)response.StatusCode, body);
+            cancellationToken.ThrowIfCancellationRequested();
+            last = await GetByIdAsync(id, cancellationToken);
+            if (last.Ok)
+            {
+                return last;
+            }
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            throw;
-        }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
-        {
-            return JokeFetchResult.Failure(url, "The browser could not reach JokeAPI. Check the connection and try again.");
-        }
+
+        return last ?? JokeFetchResult.Failure(JokeRequest.Host, "Joke of the day is unavailable.");
     }
 
     public static JokeFetchResult ReadResponse(string url, bool isSuccess, int statusCode, string body)
@@ -63,13 +57,13 @@ public sealed class JokeService(HttpClient http)
             }
 
             var joke = JsonSerializer.Deserialize(body, JokeJsonContext.Default.Joke);
-            var presentation = JokeText.Present(joke);
-            if (presentation is null)
+            var card = JokeText.Present(joke);
+            if (card is null)
             {
                 return JokeFetchResult.Failure(url, "JokeAPI returned a joke with no text.");
             }
 
-            return JokeFetchResult.Success(url, presentation);
+            return JokeFetchResult.Success(url, card);
         }
         catch (JsonException)
         {
@@ -82,6 +76,26 @@ public sealed class JokeService(HttpClient http)
         }
     }
 
+    private async Task<JokeFetchResult> SendAsync(string url, CancellationToken cancellationToken)
+    {
+        try
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            using var response = await http.SendAsync(request, cancellationToken);
+            var body = await response.Content.ReadAsStringAsync(cancellationToken);
+            return ReadResponse(url, response.IsSuccessStatusCode, (int)response.StatusCode, body);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            return JokeFetchResult.Failure(url, "The browser could not reach JokeAPI. Check the connection and try again.");
+        }
+    }
+
     private static string? FirstMessage(JokeApiError? error)
     {
         if (!string.IsNullOrWhiteSpace(error?.Message))
@@ -89,18 +103,13 @@ public sealed class JokeService(HttpClient http)
             return error.Message;
         }
 
-        if (!string.IsNullOrWhiteSpace(error?.AdditionalInfo))
-        {
-            return error.AdditionalInfo;
-        }
-
-        return null;
+        return string.IsNullOrWhiteSpace(error?.AdditionalInfo) ? null : error.AdditionalInfo;
     }
 }
 
-public sealed record JokeFetchResult(bool Ok, string RequestUrl, JokePresentation? Joke, string? ErrorMessage)
+public sealed record JokeFetchResult(bool Ok, string RequestUrl, JokeCard? Joke, string? ErrorMessage)
 {
-    public static JokeFetchResult Success(string url, JokePresentation joke) => new(true, url, joke, null);
+    public static JokeFetchResult Success(string url, JokeCard joke) => new(true, url, joke, null);
 
     public static JokeFetchResult Failure(string url, string message) => new(false, url, null, message);
 }

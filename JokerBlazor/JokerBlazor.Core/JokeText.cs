@@ -4,7 +4,7 @@ namespace JokerBlazor;
 
 public static class JokeText
 {
-    public static JokePresentation? Present(Joke? joke)
+    public static JokeCard? Present(Joke? joke)
     {
         if (joke is null)
         {
@@ -19,24 +19,34 @@ public static class JokeText
 
         if (isSingle && !string.IsNullOrWhiteSpace(jokeText))
         {
-            return new JokePresentation(joke.Category, jokeText, null);
+            return new JokeCard(joke.Id, joke.Category, "single", jokeText, null);
         }
 
         if (!string.IsNullOrWhiteSpace(setup))
         {
-            return new JokePresentation(joke.Category, setup, string.IsNullOrWhiteSpace(delivery) ? null : delivery);
+            return new JokeCard(joke.Id, joke.Category, joke.Type ?? "twopart", setup, string.IsNullOrWhiteSpace(delivery) ? null : delivery);
         }
 
         if (!string.IsNullOrWhiteSpace(delivery))
         {
-            return new JokePresentation(joke.Category, delivery, null);
+            return new JokeCard(joke.Id, joke.Category, joke.Type, delivery, null);
         }
 
         if (!string.IsNullOrWhiteSpace(jokeText))
         {
-            return new JokePresentation(joke.Category, jokeText, null);
+            return new JokeCard(joke.Id, joke.Category, joke.Type ?? "single", jokeText, null);
         }
 
         return null;
+    }
+
+    public static string ShareText(JokeCard joke, bool includePunchline)
+    {
+        if (includePunchline && !string.IsNullOrWhiteSpace(joke.Punchline))
+        {
+            return joke.Primary + "\n\n" + joke.Punchline;
+        }
+
+        return joke.Primary;
     }
 }

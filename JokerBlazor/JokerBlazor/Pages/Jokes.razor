@@ -1,6 +1,5 @@
 @page "/jokes"
-@inject JokeService JokeService
-@inject ILogger<Jokes> Logger
+@using JokerBlazor.Models
 @implements IDisposable
 
 <PageTitle>Jokes · Joker's Manor</PageTitle>
@@ -9,26 +8,35 @@
     <header class="page-header">
         <MudText Typo="Typo.h3" HtmlTag="h1" Class="page-title">Jokes</MudText>
         <MudText Typo="Typo.body1" Class="page-lede">
-            JokeAPI picks the joke. The boxes below are sent as <code>blacklistFlags</code> on the next request. NSFW, racist, sexist, and explicit start selected.
+            Pick a category, leave out what you don't want, and keep the ones worth hearing again.
         </MudText>
     </header>
 
     <MudPaper Class="panel" Elevation="0">
+        <div class="filter-row">
+            <MudSelect T="string" Label="Category" Variant="Variant.Outlined" Value="_query.Category" ValueChanged="SetCategory" Disabled="@_loading">
+                @foreach (var category in JokeCatalog.Categories)
+                {
+                    <MudSelectItem T="string" Value="@category">@category</MudSelectItem>
+                }
+            </MudSelect>
+            <MudSelect T="string" Label="Type" Variant="Variant.Outlined" Value="_query.JokeType" ValueChanged="SetType" Disabled="@_loading">
+                <MudSelectItem T="string" Value="@JokeCatalog.TypeBoth">Both</MudSelectItem>
+                <MudSelectItem T="string" Value="@JokeCatalog.TypeSingle">One-liner</MudSelectItem>
+                <MudSelectItem T="string" Value="@JokeCatalog.TypeTwoPart">Two-part</MudSelectItem>
+            </MudSelect>
+        </div>
         <MudText Typo="Typo.overline" Class="panel-label">Blacklist</MudText>
         <div class="flag-grid">
-            @foreach (var flag in JokeService.BlacklistFlags)
+            @foreach (var flag in JokeCatalog.BlacklistFlags)
             {
-                <MudCheckBox T="bool"
-                             Color="Color.Primary"
-                             Dense="true"
-                             Label="@FormatFlag(flag)"
-                             Value="SelectedFlags[flag]"
-                             ValueChanged="@(value => OnFlagChanged(flag, value))" />
+                <MudCheckBox T="bool" Color="Color.Primary" Dense="true" Label="@FormatFlag(flag)"
+                             Value="FlagOn(flag)" ValueChanged="@(value => OnFlag(flag, value))" />
             }
         </div>
-        <div class="api-row">
-            <MudText Typo="Typo.caption" Class="api-label">Next request</MudText>
-            <MudLink Href="@NextRequestUrl" Target="_blank" Typo="Typo.body2" Class="api-link">@NextRequestUrl</MudLink>
+        <div class="hero-actions">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@_loading" OnClick="LoadDaily">Joke of the day</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Primary" OnClick="() => _help = true">Shortcuts</MudButton>
         </div>
     </MudPaper>
 
@@ -39,9 +47,9 @@
         }
         <div class="joke-toolbar">
             <MudText Typo="Typo.overline" Class="panel-label">Joke</MudText>
-            @if (!string.IsNullOrWhiteSpace(Current?.Joke.Category))
+            @if (!string.IsNullOrWhiteSpace(Current?.Category))
             {
-                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Text="@Current.Joke.Category" />
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Text="@Current.Category" />
             }
         </div>
 
@@ -50,141 +58,75 @@
             <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="joke-alert">@_error</MudAlert>
         }
 
-        @if (Current is null && _loading)
+        @if (_loading && Current is null)
         {
             <div class="joke-loading" role="status">
-                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
+                <MudSkeleton Width="92%" Height="2.2rem" />
+                <MudSkeleton Width="64%" Height="1.6rem" />
                 <MudText Typo="Typo.body2">Fetching a joke…</MudText>
+            </div>
+        }
+        else if (_loading)
+        {
+            <div class="joke-loading" role="status">
+                <MudSkeleton Width="88%" Height="2rem" />
+                <MudSkeleton Width="48%" Height="1.4rem" />
             </div>
         }
         else if (Current is not null)
         {
-            <blockquote class="joke-quote">
-                <p class="joke-setup">@Current.Joke.Primary</p>
-                @if (!string.IsNullOrWhiteSpace(Current.Joke.Punchline))
+            <blockquote class="joke-quote joke-enter" @key="Current.Id">
+                <p class="joke-setup">@Current.Primary</p>
+                @if (_revealed && Current.HasPunchline)
                 {
-                    <p class="joke-punchline">@Current.Joke.Punchline</p>
+                    <p class="joke-punchline punchline-reveal">@Current.Punchline</p>
                 }
             </blockquote>
+            @if (Current.HasPunchline && !_revealed)
+            {
+                <MudButton Variant="Variant.Text" Color="Color.Primary" Class="mt-2" OnClick="Reveal">Reveal</MudButton>
+            }
+            @if (_quiz && Current.HasPunchline && !_revealed)
+            {
+                <div class="quiz-box">
+                    <MudTextField @bind-Value="_guess" Label="Guess the punchline" Variant="Variant.Outlined" Immediate="true" />
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="CheckGuess">Check</MudButton>
+                </div>
+            }
         }
 
         <div class="joke-actions">
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(!CanGoPrevious)" OnClick="ShowPrevious">Previous</MudButton>
-            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(!CanGoNext)" OnClick="ShowNext">Next</MudButton>
-            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_loading" OnClick="LoadNewJoke">New joke</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(!CanBack || _loading)" OnClick="Back">Previous</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(!CanForward || _loading)" OnClick="Forward">Next</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_loading" OnClick="LoadNew">New joke</MudButton>
+        </div>
+        <div class="icon-actions">
+            <MudTooltip Text="Favorite (F)"><MudIconButton Class="@(_pop ? "favorite-pop" : null)" Icon="@(IsFavorite ? Icons.Material.Filled.Favorite : Icons.Material.Filled.FavoriteBorder)" Color="Color.Primary" Disabled="@(Current is null)" OnClick="ToggleFavorite" aria-label="Favorite" /></MudTooltip>
+            <MudTooltip Text="Copy (C)"><MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Inherit" Disabled="@(Current is null)" OnClick="CopyJoke" aria-label="Copy" /></MudTooltip>
+            <MudTooltip Text="Share"><MudIconButton Icon="@Icons.Material.Filled.Share" Color="Color.Inherit" Disabled="@(Current is null)" OnClick="ShareJoke" aria-label="Share" /></MudTooltip>
+            <MudTooltip Text="Read it to me"><MudIconButton Icon="@Icons.Material.Filled.VolumeUp" Color="Color.Inherit" Disabled="@(Current is null)" OnClick="Speak" aria-label="Read it to me" /></MudTooltip>
+            <MudTooltip Text="Thumbs up"><MudIconButton Icon="@Icons.Material.Filled.ThumbUp" Color="@(Score == 1 ? Color.Primary : Color.Inherit)" Disabled="@(Current is null)" OnClick="@(() => Rate(1))" aria-label="Thumbs up" /></MudTooltip>
+            <MudTooltip Text="Thumbs down"><MudIconButton Icon="@Icons.Material.Filled.ThumbDown" Color="@(Score == -1 ? Color.Primary : Color.Inherit)" Disabled="@(Current is null)" OnClick="@(() => Rate(-1))" aria-label="Thumbs down" /></MudTooltip>
+            <MudTooltip Text="Quiz"><MudIconButton Icon="@Icons.Material.Filled.Quiz" Color="@(_quiz ? Color.Primary : Color.Inherit)" Disabled="@(Current?.HasPunchline != true)" OnClick="ToggleQuiz" aria-label="Quiz" /></MudTooltip>
+            <MudTooltip Text="Download card"><MudIconButton Icon="@Icons.Material.Filled.Download" Color="Color.Inherit" Disabled="@(Current is null)" OnClick="DownloadCard" aria-label="Download card" /></MudTooltip>
+            <MudTooltip Text="Reveal (R)"><MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Inherit" Disabled="@(Current?.HasPunchline != true || _revealed)" OnClick="Reveal" aria-label="Reveal" /></MudTooltip>
         </div>
     </MudPaper>
 </div>
 
-@code {
-    private static readonly HashSet<string> DefaultBlacklist = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "nsfw", "racist", "sexist", "explicit"
-    };
-
-    private readonly Dictionary<string, bool> SelectedFlags = new(StringComparer.OrdinalIgnoreCase);
-    private readonly List<HeardJoke> _history = [];
-    private CancellationTokenSource? _requestCts;
-    private int _index = -1;
-    private bool _loading = true;
-    private string? _error;
-    private string NextRequestUrl = JokeService.Endpoint;
-
-    private HeardJoke? Current => _index >= 0 && _index < _history.Count ? _history[_index] : null;
-    private bool CanGoPrevious => _index > 0 && !_loading;
-    private bool CanGoNext => _index >= 0 && _index < _history.Count - 1 && !_loading;
-
-    protected override void OnInitialized()
-    {
-        foreach (var flag in JokeService.BlacklistFlags)
-        {
-            SelectedFlags[flag] = DefaultBlacklist.Contains(flag);
-        }
-
-        NextRequestUrl = JokeService.BuildRequestUrl(SelectedFlagNames());
-    }
-
-    protected override async Task OnInitializedAsync() => await LoadNewJoke();
-
-    private async Task LoadNewJoke()
-    {
-        _requestCts?.Cancel();
-        _requestCts?.Dispose();
-        _requestCts = new CancellationTokenSource();
-        var token = _requestCts.Token;
-        _loading = true;
-        _error = null;
-
-        try
-        {
-            var result = await JokeService.GetJokeAsync(SelectedFlagNames(), token);
-            if (token.IsCancellationRequested)
-            {
-                return;
-            }
-
-            NextRequestUrl = result.RequestUrl;
-            if (!result.Ok || result.Joke is null)
-            {
-                _error = result.ErrorMessage ?? "No joke came back.";
-                Logger.LogWarning("Joke request failed: {Error}", _error);
-                return;
-            }
-
-            _history.Add(new HeardJoke(result.RequestUrl, result.Joke));
-            _index = _history.Count - 1;
-            Logger.LogInformation("Loaded {Category} joke from {Url}", result.Joke.Category, result.RequestUrl);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-        finally
-        {
-            if (!token.IsCancellationRequested)
-            {
-                _loading = false;
-            }
-        }
-    }
-
-    private void ShowPrevious()
-    {
-        if (_index > 0)
-        {
-            _index--;
-            _error = null;
-        }
-    }
-
-    private void ShowNext()
-    {
-        if (_index < _history.Count - 1)
-        {
-            _index++;
-            _error = null;
-        }
-    }
-
-    private void OnFlagChanged(string flag, bool isChecked)
-    {
-        SelectedFlags[flag] = isChecked;
-        NextRequestUrl = JokeService.BuildRequestUrl(SelectedFlagNames());
-    }
-
-    private IEnumerable<string> SelectedFlagNames() =>
-        SelectedFlags.Where(pair => pair.Value).Select(pair => pair.Key);
-
-    private static string FormatFlag(string flag) => flag.ToLowerInvariant() switch
-    {
-        "nsfw" => "NSFW",
-        _ => char.ToUpperInvariant(flag[0]) + flag[1..]
-    };
-
-    public void Dispose()
-    {
-        _requestCts?.Cancel();
-        _requestCts?.Dispose();
-    }
-
-    private sealed record HeardJoke(string RequestUrl, JokePresentation Joke);
+@if (_help)
+{
+    <div class="help-backdrop" @onclick="() => _help = false">
+        <MudPaper Class="panel help-card" Elevation="8" @onclick:stopPropagation="true">
+            <MudText Typo="Typo.h6" HtmlTag="h2">Shortcuts</MudText>
+            <ul>
+                <li><kbd>Space</kbd> or <kbd>N</kbd> next joke</li>
+                <li><kbd>F</kbd> favorite</li>
+                <li><kbd>R</kbd> reveal the punchline</li>
+                <li><kbd>C</kbd> copy</li>
+                <li><kbd>?</kbd> show or hide this list</li>
+            </ul>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="() => _help = false">Close</MudButton>
+        </MudPaper>
+    </div>
 }

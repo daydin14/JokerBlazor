@@ -7,7 +7,7 @@
 
 **Live site: [https://daydin14.github.io/JokerBlazor/](https://daydin14.github.io/JokerBlazor/)**
 
-JokerBlazor is a standalone Blazor WebAssembly app. It runs in the browser and is published to GitHub Pages as static files. Ask JokeAPI for a joke, blacklist topics you want to skip, and step back through the jokes from this visit. Light and dark mode are both included.
+JokerBlazor is a standalone Blazor WebAssembly app. It runs in the browser and is published to GitHub Pages. It still targets `net10.0`. `global.json` uses `rollForward: latestMajor`, so the .NET 11 SDK can build it.
 
 ## Pictures
 
@@ -21,57 +21,55 @@ JokerBlazor is a standalone Blazor WebAssembly app. It runs in the browser and i
 ![Jokes page in light mode on a phone](./Assets/jokes_lightmode_mobile.png)
 ![Jokes page in dark mode on a phone](./Assets/jokes_darkmode_mobile.png)
 
+## What you can do
+
+- Filter by category (Any, Programming, Pun, Misc, Dark, Spooky, Christmas), joke type, and blacklist flags. NSFW, racist, sexist, and explicit start selected. The choice is saved in this browser.
+- Hide a two-part delivery until you reveal it.
+- Save favorites, search them, and remove them. Thumbs-up jokes show under Your top jokes.
+- Copy a joke, use the device share sheet when the browser has one, or open a permalink such as `/JokerBlazor/jokes?id=244`.
+- Step back and forward through this visit. A new joke skips ones already seen in the session.
+- Load a Joke of the Day. The id comes from the date, so everyone gets the same one.
+- Hear the joke with the browser speech API.
+- Guess a two-part punchline. A correct guess celebrates; motion is skipped when the system asks for less motion.
+- Download a PNG joke card.
+- Install the app. The service worker caches the app shell, and the last jokes plus favorites stay in local storage for offline use.
+- Keyboard: Space or N next, F favorite, R reveal, C copy, ? shortcuts.
+
 ## Run it locally
 
-Install the [.NET 10 SDK](https://dotnet.microsoft.com/download) (the current LTS).
+The repo asks for the .NET 10 SDK, and a newer SDK such as .NET 11 is accepted.
 
 ```bash
 cd JokerBlazor
 dotnet run --project JokerBlazor --launch-profile http
 ```
 
-Open [http://localhost:5236](http://localhost:5236). The dev server hosts the app at `/`.
+Open [http://localhost:5236](http://localhost:5236).
 
-The GitHub Pages site is served under `/JokerBlazor/`. To preview that path, publish and rewrite the base href the same way the deploy workflow does:
+To preview the GitHub Pages path:
 
 ```bash
 dotnet publish JokerBlazor/JokerBlazor/JokerBlazor.csproj -c Release -o publish
 python3 scripts/prepare-github-pages.py publish/wwwroot
 ```
 
-Then serve the `publish/wwwroot` folder as `/JokerBlazor/`.
+Serve `publish/wwwroot` as `/JokerBlazor/`.
 
 ## GitHub Pages
 
-[`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes the Release WebAssembly app on every push to `master` and deploys it with GitHub Actions.
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes on every push to `master`. The site source is GitHub Actions. The published base href is `/JokerBlazor/`. `wwwroot/.nojekyll` keeps `_framework`, and `wwwroot/404.html` restores routes such as `/JokerBlazor/jokes`.
 
-This repository currently publishes Pages from the `gh-pages` branch (`Deploy from a branch`). That setting will not use the new workflow, and [https://daydin14.github.io/JokerBlazor/](https://daydin14.github.io/JokerBlazor/) is a 404 today.
+[`.github/workflows/dotnet.yml`](.github/workflows/dotnet.yml) builds, tests, and checks the publish output. It does not deploy.
 
-**Change this before the site can go live:** Settings → Pages → Build and deployment → Source → **GitHub Actions**.
+## Libraries
 
-Switch the source, then merge. If the merge happens first, the "Deploy to GitHub Pages" workflow fails until the source is GitHub Actions. Re-run that workflow after the switch. The public URL does not change.
-
-The published `index.html` uses `<base href="/JokerBlazor/" />`. `wwwroot/.nojekyll` keeps the `_framework` folder from being dropped, and `wwwroot/404.html` sends a direct visit to a route such as `/JokerBlazor/jokes` back into the app.
-
-[`.github/workflows/dotnet.yml`](.github/workflows/dotnet.yml) restores, builds, tests, and checks that publish output on pull requests and on `master`. It does not deploy.
-
-## Jokes
-
-Jokes come from [JokeAPI](https://v2.jokeapi.dev/). A browser `GET` to `https://v2.jokeapi.dev/joke/Any` returns `Access-Control-Allow-Origin: *`, so the page calls it directly. `https://sv443.net/jokeapi/v2` sends the same header. The app uses `v2.jokeapi.dev`, which is the host already linked from the menu.
-
-Both one-line jokes and setup/punchline jokes are shown. NSFW, racist, sexist, and explicit start blacklisted. Clear a box to allow that flag on the next request.
+- [MudBlazor](https://www.nuget.org/packages/MudBlazor) 9.14.0 for the layout, skeleton placeholders, and snackbar toasts. MIT.
+- [Blazored.LocalStorage](https://www.nuget.org/packages/Blazored.LocalStorage) 4.5.0 for filters, favorites, ratings, and the offline joke list. MIT.
+- [canvas-confetti](https://github.com/catdad/canvas-confetti) 1.9.3, self-hosted at `wwwroot/js/confetti.browser.js`. ISC.
+- Short CSS keyframes for the joke fade-in, punchline slide-up, and favorite pop. They are turned off under `prefers-reduced-motion`, which also disables the confetti burst.
 
 ## Project layout
 
-The app targets `net10.0`.
-
-- `JokerBlazor/JokerBlazor` is the WebAssembly app that gets published.
-- `JokerBlazor/JokerBlazor.Core` holds the JokeAPI client.
-- `JokerBlazor/JokerBlazor.Tests` covers request URLs and joke parsing.
-
-GitHub Pages cannot host the old Blazor Web App. That project needed a server for Interactive Server rendering. Counter and Weather were template pages and are not part of this app. Logging goes to the browser console.
-
-## Packages
-
-- [MudBlazor](https://www.nuget.org/packages/MudBlazor) 9.14.0
-- [Microsoft.AspNetCore.Components.WebAssembly](https://www.nuget.org/packages/Microsoft.AspNetCore.Components.WebAssembly) 10.0.15
+- `JokerBlazor/JokerBlazor` is the WebAssembly app.
+- `JokerBlazor/JokerBlazor.Core` holds filters, history, favorites, ratings, quiz checks, and the joke of the day.
+- `JokerBlazor/JokerBlazor.Tests` covers that logic with xUnit and bUnit.

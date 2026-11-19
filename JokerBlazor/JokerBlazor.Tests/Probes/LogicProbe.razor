@@ -1,0 +1,16 @@
+@using JokerBlazor.Models
+
+<article>
+    <p class="url">@JokeRequest.BuildUrl(Query)</p>
+    <p class="day">@JokeOfTheDay.IdFor(Day)</p>
+    <p class="favorites">@Book.Search(Term).Count</p>
+    <p class="history">@(History.Current?.Id.ToString() ?? "none")</p>
+</article>
+
+@code {
+    [Parameter] public JokeQuery Query { get; set; } = JokeQuery.SafeDefault();
+    [Parameter] public DateOnly Day { get; set; }
+    [Parameter] public FavoriteBook Book { get; set; } = new();
+    [Parameter] public string? Term { get; set; }
+    [Parameter] public SessionHistory History { get; set; } = new();
+}
