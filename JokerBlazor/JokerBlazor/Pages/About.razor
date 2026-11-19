@@ -1,0 +1,26 @@
+@page "/about"
+
+<PageTitle>About · Joker's Manor</PageTitle>
+
+<header class="page-header">
+    <MudText Typo="Typo.h3" HtmlTag="h1" Class="page-title">About</MudText>
+    <MudText Typo="Typo.body1" Class="page-lede">
+        A small joke browser by David Aydin, rebuilt as a standalone Blazor WebAssembly app so it can be hosted as static files.
+    </MudText>
+</header>
+
+<MudPaper Class="panel about-panel" Elevation="0">
+    <MudText Typo="Typo.body1">
+        The original project was a Blazor Web App with a server and a client project. GitHub Pages only serves files, so the jokes page, theme, and layout now run in the browser. There is no server and no SignalR connection.
+    </MudText>
+    <MudText Typo="Typo.body1">
+        Jokes come from <MudLink Href="https://v2.jokeapi.dev/" Target="_blank">JokeAPI</MudLink>.
+        That API sends <code>Access-Control-Allow-Origin: *</code>, so the browser can call it directly from this site.
+    </MudText>
+    <MudText Typo="Typo.body1">
+        The interface uses MudBlazor. Light and dark mode are both still here, and the choice is saved in this browser.
+    </MudText>
+    <div class="hero-actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="jokes">Back to jokes</MudButton>
+    </div>
+</MudPaper>

@@ -1,0 +1,33 @@
+@page "/"
+
+<PageTitle>Joker's Manor</PageTitle>
+
+<section class="hero">
+    <MudText Typo="Typo.overline" Class="eyebrow">Blazor WebAssembly</MudText>
+    <MudText Typo="Typo.h3" HtmlTag="h1" Class="page-title">A pocket full of jokes.</MudText>
+    <MudText Typo="Typo.body1" Class="page-lede">
+        Joker's Manor runs entirely in the browser. Ask JokeAPI for a joke, blacklist the topics you want to skip, and step back through the ones you have already heard.
+    </MudText>
+    <div class="hero-actions">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="jokes" Size="Size.Large">Read a joke</MudButton>
+        <MudButton Variant="Variant.Text" Color="Color.Primary" Href="about">About this app</MudButton>
+    </div>
+</section>
+
+<div class="feature-grid">
+    <MudPaper Class="panel feature" Elevation="0">
+        <MudIcon Icon="@Icons.Material.Outlined.Block" Color="Color.Primary" />
+        <MudText Typo="Typo.subtitle1">Blacklist flags</MudText>
+        <MudText Typo="Typo.body2">Leave out NSFW, political, or any other JokeAPI flag on the next request.</MudText>
+    </MudPaper>
+    <MudPaper Class="panel feature" Elevation="0">
+        <MudIcon Icon="@Icons.Material.Outlined.History" Color="Color.Primary" />
+        <MudText Typo="Typo.subtitle1">Joke history</MudText>
+        <MudText Typo="Typo.body2">Previous and next walk through the jokes loaded in this visit.</MudText>
+    </MudPaper>
+    <MudPaper Class="panel feature" Elevation="0">
+        <MudIcon Icon="@Icons.Material.Outlined.DarkMode" Color="Color.Primary" />
+        <MudText Typo="Typo.subtitle1">Light and dark</MudText>
+        <MudText Typo="Typo.body2">The theme follows your system, then stays where you put it.</MudText>
+    </MudPaper>
+</div>

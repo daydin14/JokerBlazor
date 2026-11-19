@@ -1,0 +1,142 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject DarkModeService DarkModeService
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@inject IBrowserViewportService Viewport
+
+<MudThemeProvider Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@if (_ready)
+{
+    <MudLayout>
+        <MudAppBar Elevation="0" Class="app-bar" Fixed="true">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu"
+                           Color="Color.Inherit"
+                           Edge="Edge.Start"
+                           OnClick="ToggleDrawer"
+                           aria-label="Toggle navigation" />
+            <MudText Typo="Typo.h6" Color="Color.Inherit" Class="brand-title">Joker's Manor</MudText>
+            <MudSpacer />
+            <MudTooltip Text="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
+                <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                               Color="Color.Inherit"
+                               OnClick="ToggleTheme"
+                               aria-label="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")" />
+            </MudTooltip>
+            <MudMenu Icon="@Icons.Material.Filled.MoreVert"
+                     AriaLabel="Options"
+                     Color="Color.Inherit"
+                     AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight"
+                     ActivationEvent="@MouseEvent.LeftClick">
+                <ChildContent>
+                    <div class="theme-switch">
+                        <MudSwitch T="bool"
+                                   Value="_isDarkMode"
+                                   ValueChanged="SetTheme"
+                                   Color="Color.Primary"
+                                   Label="@(_isDarkMode ? "Dark mode" : "Light mode")" />
+                    </div>
+                    <MudMenuItem Href="about" Icon="@Icons.Material.Filled.Info">About</MudMenuItem>
+                    <MudMenuItem Href="https://v2.jokeapi.dev/" Target="_blank" Icon="@Icons.Material.Filled.OpenInNew">Joke API</MudMenuItem>
+                </ChildContent>
+            </MudMenu>
+        </MudAppBar>
+        <MudDrawer @bind-Open="_drawerOpen"
+                   Elevation="1"
+                   ClipMode="DrawerClipMode.Always"
+                   Variant="DrawerVariant.Responsive"
+                   Breakpoint="Breakpoint.Md"
+                   Class="app-drawer">
+            <MudDrawerHeader Class="drawer-header">
+                <MudText Typo="Typo.overline" Class="drawer-kicker">Browse</MudText>
+            </MudDrawerHeader>
+            <NavMenu />
+        </MudDrawer>
+        <MudMainContent Class="main-content">
+            <MudContainer MaxWidth="MaxWidth.Medium" Class="page-container">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+}
+
+@code {
+    private static readonly MudTheme _theme = AppTheme.Create();
+    private bool _ready;
+    private bool _isDarkMode;
+    private bool _drawerOpen;
+
+    protected override void OnInitialized()
+    {
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var stored = await JS.InvokeAsync<string?>("jokerTheme.get");
+            if (stored is "dark" or "light")
+            {
+                _isDarkMode = stored == "dark";
+            }
+            else
+            {
+                _isDarkMode = await JS.InvokeAsync<bool>("jokerTheme.prefersDark");
+            }
+
+            var breakpoint = await Viewport.GetCurrentBreakpointAsync();
+            _drawerOpen = breakpoint >= Breakpoint.Md;
+        }
+        catch (Exception)
+        {
+            _drawerOpen = true;
+        }
+
+        DarkModeService.IsDarkMode = _isDarkMode;
+        _ready = true;
+        StateHasChanged();
+    }
+
+    private void ToggleDrawer() => _drawerOpen = !_drawerOpen;
+
+    private async Task ToggleTheme() => await SetTheme(!_isDarkMode);
+
+    private async Task SetTheme(bool isDark)
+    {
+        _isDarkMode = isDark;
+        DarkModeService.IsDarkMode = isDark;
+        await JS.InvokeVoidAsync("jokerTheme.set", isDark ? "dark" : "light");
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs args)
+    {
+        _ = CloseDrawerOnSmallScreensAsync();
+    }
+
+    private async Task CloseDrawerOnSmallScreensAsync()
+    {
+        if (await Viewport.IsBreakpointWithinWindowSizeAsync(Breakpoint.MdAndUp))
+        {
+            return;
+        }
+
+        _drawerOpen = false;
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

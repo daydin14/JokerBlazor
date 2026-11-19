@@ -1,85 +1,77 @@
 # JokerBlazor
 
-[![C#](https://custom-icon-badges.demolab.com/badge/C%23-%23239120.svg?logo=cshrp&logoColor=white)](#)
-[![.NET](https://img.shields.io/badge/.NET-512BD4?logo=dotnet&logoColor=fff)](#)
-[![Visual Studio](https://custom-icon-badges.demolab.com/badge/Visual%20Studio-5C2D91.svg?&logo=visual-studio&logoColor=white)](#)
-[![NuGet](https://img.shields.io/badge/NuGet-004880?logo=nuget&logoColor=fff)](#)
+[![.NET](https://img.shields.io/badge/.NET%2010-512BD4?logo=dotnet&logoColor=fff)](https://dotnet.microsoft.com/)
+[![Blazor](https://img.shields.io/badge/Blazor%20WebAssembly-512BD4?logo=blazor&logoColor=white)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
+[![MudBlazor](https://img.shields.io/badge/MudBlazor-594AE2?logo=blazor&logoColor=white)](https://mudblazor.com/)
+[![JokeAPI](https://img.shields.io/badge/JokeAPI-512BD4?logo=api&logoColor=white)](https://v2.jokeapi.dev/)
 
-[![CSS](https://img.shields.io/badge/CSS-1572B6?logo=css3&logoColor=fff)](#)
-[![HTML](https://img.shields.io/badge/HTML-%23E34F26.svg?logo=html5&logoColor=white)](#)
-![Blazor](https://img.shields.io/badge/Blazor-512BD4?style=flat&logo=blazor&logoColor=white)
-[![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?logo=webassembly&logoColor=fff)](#)
-![MudBlazor](https://img.shields.io/badge/MudBlazor-7e6fff?style=flat&logo=blazor&logoColor=white)
-![Serilog](https://img.shields.io/badge/Serilog-ff2518?style=flat&logo=serilog&logoColor=white)
-![Newtonsoft.Json](https://img.shields.io/badge/Newtonsoft.Json-000?style=flat&logo=json&logoColor=white)
-[![Markdown](https://img.shields.io/badge/Markdown-%23000000.svg?logo=markdown&logoColor=white)](#)
-![JokeAPI](https://img.shields.io/badge/JokeAPI-512BD4?style=flat&logo=api&logoColor=white)
+**Live site: [https://daydin14.github.io/JokerBlazor/](https://daydin14.github.io/JokerBlazor/)**
 
-This is a Blazor Web Application project called JokerBlazor. It is built using the Blazor framework, which allows you to build interactive web applications using C# instead of JavaScript.
-
-## Getting Started
-
-To get started with JokerBlazor, follow these steps:
-
-1. Install the .NET SDK: You will need to have the .NET SDK installed on your machine.
-   - You can download it from [here](https://dotnet.microsoft.com/en-us/download).
-2. Fork and Clone the repository: `git clone https://github.com/your-username/JokerBlazor.git`
-   - Update this command with your GitHub username after forking the repository.
-3. Navigate to the project directory: `cd JokerBlazor`
-4. Open the project in Visual Studio: `explorer JokerBlazor.sln`
-   - To open the project in Visual Studio from the Terminal.
-   - You can also open the project solution file directly from Visual Studio.
-5. Build the project: `clt + shift + 'b'`
-   - Keyboard shortcut to build the project in Visual Studio
-6. Run the application: `Green play button in Visual Studio`
-7. Open your web browser and navigate to the corresponding `applicationUrl`
-   - Within `JokerBlazor/Properties/launchSettings.json`, based on project startup launch profile, to see the application in action.
-
-## Features
-
-JokerBlazor has the following features:
-
-- Interactive user interface built with Blazor components.
-- Server-side rendering for fast initial page load.
-- Real-time updates using SignalR.
-- CRUD operations with a backend API.
+JokerBlazor is a standalone Blazor WebAssembly app. It runs in the browser and is published to GitHub Pages as static files. Ask JokeAPI for a joke, blacklist topics you want to skip, and step back through the jokes from this visit. Light and dark mode are both included.
 
 ## Pictures
 
-![Light Mode](./Assets/jokes_lightmode.png)
-![Dark Mode](./Assets/jokes_darkmode.png)
+### Desktop
 
-## Technologies Used
+![Jokes page in light mode](./Assets/jokes_lightmode.png)
+![Jokes page in dark mode](./Assets/jokes_darkmode.png)
 
-- Blazor: A framework for building interactive web applications using C#.
-- C#: A programming language used for developing various applications.
-- HTML: A markup language used for structuring web pages.
-- CSS: A style sheet language used for describing the look and formatting of a document written in HTML.
-- JavaScript: A programming language used for adding interactivity to web pages.
-- ASP.NET Core: A cross-platform framework for building modern, cloud-based, internet-connected applications.
+### Phone
 
-## Package References
+![Jokes page in light mode on a phone](./Assets/jokes_lightmode_mobile.png)
+![Jokes page in dark mode on a phone](./Assets/jokes_darkmode_mobile.png)
 
-JokerBlazor uses the following packages:
+## Run it locally
 
-- [MudBlazor](https://www.nuget.org/packages/MudBlazor) (Version 7.8.0)
-- [Newtonsoft.Json](https://www.nuget.org/packages/Newtonsoft.Json) (Version 13.0.3)
-- [Serilog](https://www.nuget.org/packages/Serilog) (Version 4.0.1)
-- [Serilog.AspNetCore](https://www.nuget.org/packages/Serilog.AspNetCore) (Version 8.0.2)
-- [Serilog.Settings.Configuration](https://www.nuget.org/packages/Serilog.Settings.Configuration) (Version 8.0.2)
-- [Serilog.Sinks.Console](https://www.nuget.org/packages/Serilog.Sinks.Console) (Version 6.0.0)
-- [Serilog.Sinks.File](https://www.nuget.org/packages/Serilog.Sinks.File) (Version 6.0.0)
+Install the [.NET 10 SDK](https://dotnet.microsoft.com/download) (the current LTS).
 
-## JokeAPI Integration
+```bash
+cd JokerBlazor
+dotnet run --project JokerBlazor --launch-profile http
+```
 
-JokerBlazor incorporates the [JokeAPI](https://v2.jokeapi.dev/) to provide jokes and humor to the users. The JokeAPI is a free and open API that offers a wide range of joke categories and types. It can be accessed through HTTP requests and provides JSON responses containing various joke details such as the joke category, type, setup, and punchline. The integration with JokeAPI adds an extra layer of fun and entertainment to the JokerBlazor application.
+Open [http://localhost:5236](http://localhost:5236). The dev server hosts the app at `/`.
 
-## Contributing
+The GitHub Pages site is served under `/JokerBlazor/`. To preview that path, publish and rewrite the base href the same way the deploy workflow does:
 
-Contributions are welcome! If you have any ideas, suggestions, or bug reports, please open an issue or submit a pull request.
+```bash
+dotnet publish JokerBlazor/JokerBlazor/JokerBlazor.csproj -c Release -o publish
+python3 scripts/prepare-github-pages.py publish/wwwroot
+```
 
-## Acknowledgements
+Then serve the `publish/wwwroot` folder as `/JokerBlazor/`.
 
-- [Blazor](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor): A framework for building interactive web applications using C#.
-- [ASP.NET Core](https://dotnet.microsoft.com/apps/aspnet): A cross-platform framework for building modern, cloud-based, internet-connected applications.
-- [SignalR](https://dotnet.microsoft.com/apps/aspnet/signalr): A library for adding real-time web functionality to applications.
+## GitHub Pages
+
+[`.github/workflows/pages.yml`](.github/workflows/pages.yml) publishes the Release WebAssembly app on every push to `master` and deploys it with GitHub Actions.
+
+This repository currently publishes Pages from the `gh-pages` branch (`Deploy from a branch`). That setting will not use the new workflow, and [https://daydin14.github.io/JokerBlazor/](https://daydin14.github.io/JokerBlazor/) is a 404 today.
+
+**Change this before the site can go live:** Settings → Pages → Build and deployment → Source → **GitHub Actions**.
+
+Switch the source, then merge. If the merge happens first, the "Deploy to GitHub Pages" workflow fails until the source is GitHub Actions. Re-run that workflow after the switch. The public URL does not change.
+
+The published `index.html` uses `<base href="/JokerBlazor/" />`. `wwwroot/.nojekyll` keeps the `_framework` folder from being dropped, and `wwwroot/404.html` sends a direct visit to a route such as `/JokerBlazor/jokes` back into the app.
+
+[`.github/workflows/dotnet.yml`](.github/workflows/dotnet.yml) restores, builds, tests, and checks that publish output on pull requests and on `master`. It does not deploy.
+
+## Jokes
+
+Jokes come from [JokeAPI](https://v2.jokeapi.dev/). A browser `GET` to `https://v2.jokeapi.dev/joke/Any` returns `Access-Control-Allow-Origin: *`, so the page calls it directly. `https://sv443.net/jokeapi/v2` sends the same header. The app uses `v2.jokeapi.dev`, which is the host already linked from the menu.
+
+Both one-line jokes and setup/punchline jokes are shown. NSFW, racist, sexist, and explicit start blacklisted. Clear a box to allow that flag on the next request.
+
+## Project layout
+
+The app targets `net10.0`.
+
+- `JokerBlazor/JokerBlazor` is the WebAssembly app that gets published.
+- `JokerBlazor/JokerBlazor.Core` holds the JokeAPI client.
+- `JokerBlazor/JokerBlazor.Tests` covers request URLs and joke parsing.
+
+GitHub Pages cannot host the old Blazor Web App. That project needed a server for Interactive Server rendering. Counter and Weather were template pages and are not part of this app. Logging goes to the browser console.
+
+## Packages
+
+- [MudBlazor](https://www.nuget.org/packages/MudBlazor) 9.14.0
+- [Microsoft.AspNetCore.Components.WebAssembly](https://www.nuget.org/packages/Microsoft.AspNetCore.Components.WebAssembly) 10.0.15

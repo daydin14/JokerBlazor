@@ -1,0 +1,190 @@
+@page "/jokes"
+@inject JokeService JokeService
+@inject ILogger<Jokes> Logger
+@implements IDisposable
+
+<PageTitle>Jokes · Joker's Manor</PageTitle>
+
+<div class="jokes-page">
+    <header class="page-header">
+        <MudText Typo="Typo.h3" HtmlTag="h1" Class="page-title">Jokes</MudText>
+        <MudText Typo="Typo.body1" Class="page-lede">
+            JokeAPI picks the joke. The boxes below are sent as <code>blacklistFlags</code> on the next request. NSFW, racist, sexist, and explicit start selected.
+        </MudText>
+    </header>
+
+    <MudPaper Class="panel" Elevation="0">
+        <MudText Typo="Typo.overline" Class="panel-label">Blacklist</MudText>
+        <div class="flag-grid">
+            @foreach (var flag in JokeService.BlacklistFlags)
+            {
+                <MudCheckBox T="bool"
+                             Color="Color.Primary"
+                             Dense="true"
+                             Label="@FormatFlag(flag)"
+                             Value="SelectedFlags[flag]"
+                             ValueChanged="@(value => OnFlagChanged(flag, value))" />
+            }
+        </div>
+        <div class="api-row">
+            <MudText Typo="Typo.caption" Class="api-label">Next request</MudText>
+            <MudLink Href="@NextRequestUrl" Target="_blank" Typo="Typo.body2" Class="api-link">@NextRequestUrl</MudLink>
+        </div>
+    </MudPaper>
+
+    <MudPaper Class="panel joke-panel" Elevation="0">
+        @if (_loading)
+        {
+            <MudProgressLinear Indeterminate="true" Color="Color.Primary" Class="joke-progress" />
+        }
+        <div class="joke-toolbar">
+            <MudText Typo="Typo.overline" Class="panel-label">Joke</MudText>
+            @if (!string.IsNullOrWhiteSpace(Current?.Joke.Category))
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined" Text="@Current.Joke.Category" />
+            }
+        </div>
+
+        @if (!string.IsNullOrEmpty(_error))
+        {
+            <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="joke-alert">@_error</MudAlert>
+        }
+
+        @if (Current is null && _loading)
+        {
+            <div class="joke-loading" role="status">
+                <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Medium" />
+                <MudText Typo="Typo.body2">Fetching a joke…</MudText>
+            </div>
+        }
+        else if (Current is not null)
+        {
+            <blockquote class="joke-quote">
+                <p class="joke-setup">@Current.Joke.Primary</p>
+                @if (!string.IsNullOrWhiteSpace(Current.Joke.Punchline))
+                {
+                    <p class="joke-punchline">@Current.Joke.Punchline</p>
+                }
+            </blockquote>
+        }
+
+        <div class="joke-actions">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(!CanGoPrevious)" OnClick="ShowPrevious">Previous</MudButton>
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Disabled="@(!CanGoNext)" OnClick="ShowNext">Next</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@_loading" OnClick="LoadNewJoke">New joke</MudButton>
+        </div>
+    </MudPaper>
+</div>
+
+@code {
+    private static readonly HashSet<string> DefaultBlacklist = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "nsfw", "racist", "sexist", "explicit"
+    };
+
+    private readonly Dictionary<string, bool> SelectedFlags = new(StringComparer.OrdinalIgnoreCase);
+    private readonly List<HeardJoke> _history = [];
+    private CancellationTokenSource? _requestCts;
+    private int _index = -1;
+    private bool _loading = true;
+    private string? _error;
+    private string NextRequestUrl = JokeService.Endpoint;
+
+    private HeardJoke? Current => _index >= 0 && _index < _history.Count ? _history[_index] : null;
+    private bool CanGoPrevious => _index > 0 && !_loading;
+    private bool CanGoNext => _index >= 0 && _index < _history.Count - 1 && !_loading;
+
+    protected override void OnInitialized()
+    {
+        foreach (var flag in JokeService.BlacklistFlags)
+        {
+            SelectedFlags[flag] = DefaultBlacklist.Contains(flag);
+        }
+
+        NextRequestUrl = JokeService.BuildRequestUrl(SelectedFlagNames());
+    }
+
+    protected override async Task OnInitializedAsync() => await LoadNewJoke();
+
+    private async Task LoadNewJoke()
+    {
+        _requestCts?.Cancel();
+        _requestCts?.Dispose();
+        _requestCts = new CancellationTokenSource();
+        var token = _requestCts.Token;
+        _loading = true;
+        _error = null;
+
+        try
+        {
+            var result = await JokeService.GetJokeAsync(SelectedFlagNames(), token);
+            if (token.IsCancellationRequested)
+            {
+                return;
+            }
+
+            NextRequestUrl = result.RequestUrl;
+            if (!result.Ok || result.Joke is null)
+            {
+                _error = result.ErrorMessage ?? "No joke came back.";
+                Logger.LogWarning("Joke request failed: {Error}", _error);
+                return;
+            }
+
+            _history.Add(new HeardJoke(result.RequestUrl, result.Joke));
+            _index = _history.Count - 1;
+            Logger.LogInformation("Loaded {Category} joke from {Url}", result.Joke.Category, result.RequestUrl);
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        finally
+        {
+            if (!token.IsCancellationRequested)
+            {
+                _loading = false;
+            }
+        }
+    }
+
+    private void ShowPrevious()
+    {
+        if (_index > 0)
+        {
+            _index--;
+            _error = null;
+        }
+    }
+
+    private void ShowNext()
+    {
+        if (_index < _history.Count - 1)
+        {
+            _index++;
+            _error = null;
+        }
+    }
+
+    private void OnFlagChanged(string flag, bool isChecked)
+    {
+        SelectedFlags[flag] = isChecked;
+        NextRequestUrl = JokeService.BuildRequestUrl(SelectedFlagNames());
+    }
+
+    private IEnumerable<string> SelectedFlagNames() =>
+        SelectedFlags.Where(pair => pair.Value).Select(pair => pair.Key);
+
+    private static string FormatFlag(string flag) => flag.ToLowerInvariant() switch
+    {
+        "nsfw" => "NSFW",
+        _ => char.ToUpperInvariant(flag[0]) + flag[1..]
+    };
+
+    public void Dispose()
+    {
+        _requestCts?.Cancel();
+        _requestCts?.Dispose();
+    }
+
+    private sealed record HeardJoke(string RequestUrl, JokePresentation Joke);
+}
